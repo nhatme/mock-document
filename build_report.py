@@ -7,9 +7,17 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.enum.section import WD_SECTION
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 
 DIAGRAMS = '/tmp/mock-document/diagrams'
-OUT_PATH = '/home/nhatpx/practice/UIT-LAB/backup/financial-advisor/bao-cao-financial-advisor.docx'
+
+# Cover-page fields (git source, members, title, ...) — edit this file and rerun
+# this script to regenerate the report with the new values, no code changes needed.
+CONFIG_PATH = '/tmp/mock-document/report_config.json'
+with open(CONFIG_PATH, encoding='utf-8') as f:
+    CFG = json.load(f)
+
+OUT_PATH = CFG['output_path']
 
 # page_map: bookmark_name -> page number, filled in on the second pass.
 PAGE_MAP_FILE = '/tmp/mock-document/toc_page_map.json'
@@ -114,42 +122,44 @@ def add_title_page():
     text_p = text_cell.paragraphs[0]
     text_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     text_p.paragraph_format.left_indent = Inches(0.15)
-    r = text_p.add_run('ĐẠI HỌC QUỐC GIA TP. HỒ CHÍ MINH\nTRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN')
+    r = text_p.add_run(f"{CFG['university_line1']}\n{CFG['university_line2']}")
     r.bold = True
     r.font.size = Pt(13)
 
     doc.add_paragraph()
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run('BÁO CÁO ĐỒ ÁN MÔN HỌC')
+    r = p.add_run(CFG['report_title'])
     r.bold = True
     r.font.size = Pt(20)
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run('Môn: KỸ THUẬT LẬP TRÌNH TRÍ TUỆ NHÂN TẠO\n(AI ENGINEERING)')
+    r = p.add_run(CFG['course_line'])
     r.font.size = Pt(13)
 
     doc.add_paragraph()
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run('AI Tư Vấn Sản Phẩm Tài Chính Cho Người Trẻ Việt Nam')
+    r = p.add_run(CFG['project_title'])
     r.bold = True
     r.font.size = Pt(18)
     r.font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run('Hệ thống So khớp & Gợi ý Sản phẩm Tài chính có Giải thích')
+    r = p.add_run(CFG['project_subtitle'])
     r.italic = True
     r.font.size = Pt(13)
 
     doc.add_paragraph()
+    member_rows = [('Thành viên nhóm' if i == 0 else '', f'{i + 1}. {name}', False)
+                   for i, name in enumerate(CFG['members'])]
     info_rows = [
-        ('Chương trình Đào tạo', 'Liên thông Đại học Ngành Trí tuệ Nhân tạo'),
-        ('Giảng viên hướng dẫn', 'TS. Đặng Văn Thìn'),
-        ('Thành viên nhóm', '1. Phan Văn Nhật — 26410083'),
-        ('', '2. Trương Quốc Bảo — 26410008'),
+        ('Chương trình Đào tạo', CFG['program'], False),
+        ('Giảng viên hướng dẫn', CFG['advisor'], False),
+        *member_rows,
+        ('Mã nguồn (GitHub)', CFG['git_url'], True),
     ]
     info_table = doc.add_table(rows=0, cols=2)
     info_table.autofit = False
@@ -158,8 +168,8 @@ def add_title_page():
     ilayout.set(qn('w:type'), 'fixed')
     itblPr.append(ilayout)
     info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    label_w, value_w = Inches(1.9), Inches(3.0)
-    for label, value in info_rows:
+    label_w, value_w = Inches(1.9), Inches(3.4)
+    for label, value, is_link in info_rows:
         row = info_table.add_row()
         row.cells[0].width = label_w
         row.cells[1].width = value_w
@@ -174,13 +184,16 @@ def add_title_page():
         vp = row.cells[1].paragraphs[0]
         vp.alignment = WD_ALIGN_PARAGRAPH.LEFT
         vp.paragraph_format.left_indent = Inches(0.15)
-        vr = vp.add_run(value)
-        vr.font.size = Pt(12)
+        if is_link:
+            add_external_hyperlink(vp, value, value, size_pt=11)
+        else:
+            vr = vp.add_run(value)
+            vr.font.size = Pt(12)
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(190)
-    r = p.add_run('TP.HCM - 2026')
+    p.paragraph_format.space_before = Pt(150)
+    r = p.add_run(CFG['place_date'])
     r.bold = True
 
     set_page_border(doc.sections[0], color='1F4E79', sz=24, val='single', space=24)
@@ -201,6 +214,32 @@ def add_internal_hyperlink(paragraph, text, bookmark_name):
     u = OxmlElement('w:u')
     u.set(qn('w:val'), 'single')
     rPr.append(u)
+    new_run.append(rPr)
+    t = OxmlElement('w:t')
+    t.set(qn('xml:space'), 'preserve')
+    t.text = text
+    new_run.append(t)
+    hyperlink.append(new_run)
+    paragraph._p.append(hyperlink)
+
+
+def add_external_hyperlink(paragraph, text, url, size_pt=None):
+    part = paragraph.part
+    r_id = part.relate_to(url, RT.HYPERLINK, is_external=True)
+    hyperlink = OxmlElement('w:hyperlink')
+    hyperlink.set(qn('r:id'), r_id)
+    new_run = OxmlElement('w:r')
+    rPr = OxmlElement('w:rPr')
+    color = OxmlElement('w:color')
+    color.set(qn('w:val'), '1F4E79')
+    rPr.append(color)
+    u = OxmlElement('w:u')
+    u.set(qn('w:val'), 'single')
+    rPr.append(u)
+    if size_pt is not None:
+        sz = OxmlElement('w:sz')
+        sz.set(qn('w:val'), str(int(size_pt * 2)))
+        rPr.append(sz)
     new_run.append(rPr)
     t = OxmlElement('w:t')
     t.set(qn('xml:space'), 'preserve')

@@ -1,0 +1,17 @@
+{
+  "university_line1": "ĐẠI HỌC QUỐC GIA TP. HỒ CHÍ MINH",
+  "university_line2": "TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN",
+  "report_title": "BÁO CÁO ĐỒ ÁN MÔN HỌC",
+  "course_line": "Môn: KỸ THUẬT LẬP TRÌNH TRÍ TUỆ NHÂN TẠO\n(AI ENGINEERING)",
+  "project_title": "AI Tư Vấn Sản Phẩm Tài Chính Cho Người Trẻ Việt Nam",
+  "project_subtitle": "Hệ thống So khớp & Gợi ý Sản phẩm Tài chính có Giải thích",
+  "program": "Liên thông Đại học Ngành Trí tuệ Nhân tạo",
+  "advisor": "TS. Phan Thế Duy",
+  "members": [
+    "Phan Văn Nhật — 26410083",
+    "Trương Quốc Bảo — 26410008"
+  ],
+  "git_url": "https://github.com/nhatme/financial-advisor.git",
+  "place_date": "TP.HCM - 2026",
+  "output_path": "/tmp/bao-cao.docx"
+}

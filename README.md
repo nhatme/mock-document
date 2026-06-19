@@ -1,6 +1,6 @@
 # Usage
 
-Build the financial advisor report with `make`.
+Build the report with `make`.
 
 ## Requirements
 

@@ -1,0 +1,9 @@
+docxenv/
+mockdocx/
+*.docx
+*.pdf
+cover*.png
+page*.png
+toc_page.png
+toc_page_map.json
+soffice.log
